@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import liff from "@line/liff";
+import Image from "next/image"; // ✅ ใช้ next/image แทน <img>
 
 interface LiffProfile {
   userId: string;
@@ -15,23 +16,37 @@ export default function HomePage() {
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID; // ✅ ดึงจาก .env
+    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+
     if (!liffId) {
-      setError("LIFF ID not found");
+      // ✅ ใช้ setTimeout เพื่อหลีกเลี่ยงการเรียก setState ระหว่าง render
+      setTimeout(() => {
+        setError("LIFF ID not found");
+      }, 0);
       return;
     }
 
     const initLiff = async () => {
       try {
         await liff.init({ liffId });
+
         if (!liff.isLoggedIn()) {
           liff.login();
-        } else {
-          const userProfile = await liff.getProfile();
-          setProfile(userProfile);
+          return;
         }
-      } catch (err: any) {
-        setError(err.message);
+
+        const userProfile = await liff.getProfile();
+        const formattedProfile: LiffProfile = {
+          userId: userProfile.userId,
+          displayName: userProfile.displayName,
+          pictureUrl: userProfile.pictureUrl,
+          statusMessage: userProfile.statusMessage,
+        };
+        setProfile(formattedProfile);
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Unknown LIFF error occurred";
+        setError(message);
       }
     };
 
@@ -40,21 +55,24 @@ export default function HomePage() {
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen p-6 text-center">
-      <h1 className="text-2xl font-bold mb-4">LINE LIFF + Next.js + .env</h1>
+      {/* <h1 className="text-2xl font-bold mb-4">LINE LIFF + Next.js + .env</h1> */}
 
       {error && <p className="text-red-500">{error}</p>}
 
       {profile ? (
         <div className="flex flex-col items-center space-y-2">
           {profile.pictureUrl && (
-            <img
+            <Image
               src={profile.pictureUrl}
               alt="Profile"
-              className="w-24 h-24 rounded-full border"
+              width={96}
+              height={96}
+              className="rounded-full border"
+              priority
             />
           )}
           <h2 className="text-xl">{profile.displayName}</h2>
-          <p className="text-sm text-gray-500">{profile.userId}</p>
+          {/* <p className="text-sm text-gray-500">{profile.userId}</p> */}
         </div>
       ) : (
         <p>Loading profile...</p>
